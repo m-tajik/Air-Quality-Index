@@ -1,0 +1,988 @@
+---
+title: "Data Visualization Final Project Writeup"
+author: "Laura Gould Prajwal Nagendra Masouma Tajik"
+date: "2023-12-16"
+output: 
+  html_document: 
+    fig_width: 10
+---
+# Introduction
+
+## Air Pollution
+Air pollution poses a grave threat to public health. 1 in 4 people (over 119 million) in the US face health risks from air pollution, and the impacts are disproportionately faced by communities of color and Western city residents. This is a problem because persistent exposure to air pollution leads to long-term health risks such as heart disease, lung cancer, respiratory ailments like emphysema, and potential damage to vital organs like nerves, brain, kidneys, liver. Air pollution is also suspected to cause birth defects.
+
+Sources of air popllution also contribute to climate change. Emissions of greenhouse gases like carbon dioxide (CO2), methane (CH4), and nitrous oxide (N2O), contributes significantly to global warming by trapping heat in the atmosphere, exacerbating global warming. This increases the frequency and severity of so-called natural disasters like fires, tornadoes, hurricanes, and the like, which also put people in danger. It's safe to say from this perspecitve that air pollution should be monitored and controlled.
+
+## Air Quality Index
+Air Quality Index (AQI) is a standardized tool used to measure and communicate the quality of outdoor air in the US. It works by assigning a numerical value that reflects the levels of various pollutants present.AQI is calculated by measuring pollutant concentrations (PM2.5, PM10, O3, NO2, SO2, CO), converting these into standardized index values, and selecting the highest sub-index as the overall AQI value for a specific location and time. It employs a scale ranging from 0 to 500, with categories like "Good," "Moderate," "Unhealthy for Sensitive Groups," "Unhealthy," "Very Unhealthy," and "Hazardous" denoting different health risks.
+
+
+## Environmental Protection Agency Dataset
+Our dataset was sourced from the United States Environmental Protection Agency (US EPA). The original dataset consists of 1001 rows, representing counties, and 18 columns, showing information about the air quality in those counties for the year 2022.Currently only 1000 counties out of 3143 counties have recorded AQI. Hence the dataset has a lot of missing information.
+
+
+**Variables** The dataset's 18 variables are:
+
+* State, County, and Year
+    * *These tell us where the county is. The year=2022 for all observations* 
+* Days with AQI
+    * *This tells us how many days AQI was measured in each county* 
+* Good Days, Moderate Days, Unhealthy for Sensitive Groups Days, Unhealthy Days, Very Unhealthy Days, Hazardous Days 
+    * *These list the number of days which were categorized at different levels of the AQI index for each county*
+* Max AQI, 90th Percentile AQI, Median AQI
+    * *These are summary statistics for the AQI in each county*
+* Days CO, Days NO2, Days Ozone, Days PM2.5, and Days PM10
+    * *These tell us the number of times that different pollutants which comprise AQI were individually flagged as being above unsafe levels in each county*
+
+Together, this provides comprehensive information on air quality parameters across different regions for 2022. We will use this data in order to understand what air quality looked like in 2022, and what regions are doing better and worse on different air quality metrics in the United States.
+
+
+# info from instructor
+To note, it should contain multiple, publication-quality visualizations that are appropriately chosen based on the structure of your data and adhere to the theoretical concepts discussed in class.
+The R code should clearly describe with step-by-step process: 
+b)	data processing or manipulation or exploration
+c)	data visualizations process
+
+b)	Rationale to choose the graph
+•	Type of the key variable
+•	Type of right graphical tool to fit for the key variable analysis and few pros and cons or challenges (if necessary) for the graphical method
+•	Display the high quality of graph for the analysis and interpret the result. To note, high quality refers, clear title, labeling of the figure, choice of scaling parameters including color option, etc (mainly you will pretend your audiences are public policy makers who don’t have any knowledge of data visualizations)
+•	Explore at least one alternative graphical method to display your data for the key variable analysis (other than your main graph) that can address to mitigate your challenges (if necessary). And then interpret the result. 
+
+c)	Overall summary of your work that links with your hypothesis. Summary should cover from public policy perspectives.  
+
+d) who did what
+
+# Loading Packages and Importing the Data
+The first step in any data project is to import the data you need and load all packages in R that you will use to clean that data. Here, our dataset is called "annual_aqi_by_county_2022", and we load all of the packages we used in data cleaning and visualization in advance. 
+```{r libraries, echo=T}
+knitr::opts_chunk$set(echo = TRUE)
+# First, load all of the required packages for the final project
+library(ggplot2)
+library(maps)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(maps)
+library(ggthemes) 
+library(tidyverse)
+library(urbnmapr)
+library(gridExtra)
+library(plotrix)
+library(forcats)
+library(reshape2)
+library(gridExtra)  
+# library(magic)
+library(gganimate)
+
+# Load the original dataset, from the US EPA
+df <- read.csv("annual_aqi_by_county_2022.csv")
+
+# Turn off scientific notation
+options(scipen=999)
+```
+
+# Data Visualization
+Once the data was imported, we needed to adjust it and create new variables in order to visualize it in the ways that would best demonstrate the changes in air quality across counties, states, and regions in the US. After all of the data cleaning was done, we could visualize the dataset in many different ways.
+
+
+## Data Cleaning for Air Quality Days Across States
+```{r data_cleaning_air_quality, echo=T}
+#Percentage of good days
+df['goodpct'] = df['Good.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'goodpct' after 'Good Days'
+target_variable <- 'Good.Days'
+column_to_move <- 'goodpct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+
+#Percentage of Moderate days
+df['moderatepct'] = df['Moderate.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'moderatepct' after 'Moderate Days'
+target_variable <- 'Moderate.Days'
+column_to_move <- 'moderatepct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+
+#Percentage of Unhealhty for sensitive groups days
+df['Sensitivepct'] = df['Unhealthy.for.Sensitive.Groups.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'moderatepct' after 'Moderate Days'
+target_variable <- 'Unhealthy.for.Sensitive.Groups.Days'
+column_to_move <- 'Sensitivepct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+#Percentage of unhealthy days
+df['Unhealthypct'] = df['Unhealthy.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'moderatepct' after 'Moderate Days'
+target_variable <- 'Unhealthy.Days'
+column_to_move <- 'Unhealthypct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+
+#Percentage of Very Unhealthy days
+df['Very.Unhealthypct'] = df['Very.Unhealthy.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'moderatepct' after 'Moderate Days'
+target_variable <- 'Very.Unhealthy.Days'
+column_to_move <- 'Very.Unhealthypct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+#Percentage of Hazardous days
+df['Hazardouspct'] = df['Hazardous.Days'] / df['Days.with.AQI']
+
+# Reorder columns with 'moderatepct' after 'Moderate Days'
+target_variable <- 'Hazardous.Days'
+column_to_move <- 'Hazardouspct'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+
+#Check if there are null values in the entire dataset 
+missing_values <- colSums(is.na(df))
+
+
+# Print columns with missing values
+for (col_name in names(missing_values)) {
+  if (missing_values[col_name]) {
+    cat(paste("Column '", col_name, "' has missing values.\n", sep = ""))
+  } else {
+    cat(paste("Column '", col_name, "' does not have missing values.\n", sep = ""))
+  }
+}
+
+
+#Create column Region and assign states to them
+df <- df %>%
+  mutate(
+    Region = case_when(
+      State %in% c('New York', 'New Jersey', 'Pennsylvania', 'Connecticut', 'Maine', 'Massachusetts', 'New Hampshire', 'Rhode Island', 'Vermont') ~ 'Northeast',
+      State %in% c('Illinois','Indiana', 'Indiana', 'Michigan', 'Ohio', 'Wisconsin','Iowa', 'Kansas', 'Minnesota', 'Missouri', 'Nebraska', 'North Dakota', 'South Dakota') ~ 'MidWest',
+      State %in% c('Delaware','District Of Columbia', 'Florida', 'Georgia', 'Maryland', 'North Carolina','South Carolina', 'Virginia', 'West Virginia','Alabama', 'Kentucky', 'Mississippi', 'Tennessee', 'Arkansas', 'Louisiana', 'Oklahoma', 'Texas') ~ 'South',
+      State %in% c('Arizona', 'Colorado', 'Idaho', 'New Mexico', 'Montana', 'Utah', 'Nevada', 'Wyoming', 'Alaska','California','Hawaii','Washington','Oregon') ~ 'West',
+      TRUE ~ 'Other'  # Default value for other cases
+    )
+  )
+
+#Move column region next to County column
+target_variable <- 'County'
+column_to_move <- 'Region'
+df <- df %>%
+  select(names(df)[1:which(names(df) == target_variable)], 
+         column_to_move,
+         names(df)[(which(names(df) == target_variable) + 1):length(names(df))])
+
+```
+
+## Data Cleaning for County Level Mapping
+```{r data_cleaning_countymaps, echo=T}
+## Changing State and County to lower case to match them and extract fips
+df$State <- tolower(df$State)
+df$County <- tolower(df$County)
+
+#Load fips for counties 
+data("county.fips")
+
+# Split CountyName column into separate State and County columns
+county.fips <- county.fips %>%
+  separate(polyname, into = c("State", "County"), sep = ",", remove = FALSE, extra = "drop")
+
+
+new_row <- data.frame(
+  fips = '2013',          
+  State = 'alaska',  
+  County = 'aleutians east '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row) 
+
+new_row <- data.frame(
+  fips = '2020',          
+  State = 'alaska',  
+  County = 'anchorage '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row) 
+
+new_row <- data.frame(
+  fips = '2068',          
+  State = 'alaska',  
+  County = 'denali '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row) 
+
+new_row <- data.frame(
+  fips = '2090',          
+  State = 'alaska',  
+  County = 'fairbanks north star '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row) 
+
+new_row <- data.frame(
+  fips = '2110',          
+  State = 'alaska',  
+  County = 'juneau '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+
+new_row <- data.frame(
+  fips = '2122',          
+  State = 'alaska',  
+  County = 'kenai peninsula '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+new_row <- data.frame(
+  fips = '2170',          
+  State = 'alaska',  
+  County = 'matanuska-susitna '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+new_row <- data.frame(
+  fips = '2185',          
+  State = 'alaska',  
+  County = 'north slope '
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+
+new_row <- data.frame(
+  fips = '15000',          
+  State = 'hawaii',  
+  County = 'hawaii'
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+
+new_row <- data.frame(
+  fips = '15003',          
+  State = 'hawaii',  
+  County = 'honolulu'
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+new_row <- data.frame(
+  fips = '15007',          
+  State = 'hawaii',  
+  County = 'kauai'
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+new_row <- data.frame(
+  fips = '15009',          
+  State = 'hawaii',  
+  County = 'maui'
+)
+
+# Make sure the data types match
+county.fips <- county.fips %>%
+  mutate(
+    County = as.character(County),  
+    fips = as.character(fips)  
+  ) %>%
+  add_row(.before = 1, new_row)
+
+
+
+#Delete some counties and states that their fips are not available either online or in counties.fips
+df <- df %>%
+  filter(State != "country of mexico" &
+           State != "puerto rico" &
+           State != "virgin islands" &
+           County != "bristol city" &
+           County != "hampton city" &
+           County != "hopewell city" &
+           County != "salem city")
+
+
+#Correct the spelling of countoes based on countoes.fips so that we can extract fips later based on them
+df <- df %>%
+  mutate(
+    County = case_when(
+      County %in% c('dekalb') ~ 'de kalb',
+      County %in% c('district of columbia') ~ 'washington',
+      County %in% c('okaloosa') ~ 'okaloosa:main',
+      County %in% c('st. lucie') ~ 'st lucie',
+      County %in% c('dupage') ~ 'du page',
+      County %in% c('saint clair') ~ 'st clair',
+      County %in% c('laporte') ~ 'la porte',
+      County %in% c('st. joseph') ~ 'st joseph',
+      County %in% c('st. bernard') ~ 'st bernard',
+      County %in% c('st. james') ~ 'st james',
+      County %in% c('st. john the baptist') ~ 'st john the baptist',
+      County %in% c('st. martin') ~ 'st martin:south',
+      County %in% c('st. tammany') ~ 'st tammany',
+      County %in% c('baltimore (city)') ~ 'baltimore',
+      County %in% c("prince george's") ~ 'prince georges',
+      County %in% c("st. clair") ~ 'st clair',
+      County %in% c("saint louis") ~ 'st louis',
+      County %in% c("desoto") ~ 'de soto',
+      County %in% c("saint charles") ~ 'st charles',
+      County %in% c("sainte genevieve") ~ 'ste genevieve',
+      County %in% c("st. louis city") ~ 'st louis city',
+      County %in% c("galveston") ~ 'galveston:main',
+      County %in% c("lynchburg city") ~ 'lunenburg',
+      County %in% c("richmond city") ~ 'richmond',
+      County %in% c("suffolk city") ~ 'suffolk',
+      County %in% c("norfolk city") ~ 'norfolk',
+      County %in% c("virginia beach city") ~ 'virginia beach',
+      TRUE ~ County  
+    )
+  )
+
+#Initialize an empty column for fips in df
+df$county_fips <- NA
+
+#Iterate through counties and assign fips 
+for (i in 1:nrow(df)) {
+  # Find the matching row in County.fips
+  matching_row <- county.fips$County == df$County[i]
+  
+  # Assign the value from "fips" column to "county_fips" column in df
+  df$county_fips[i] <- county.fips$fips[matching_row]
+}
+
+df <- df %>%
+  mutate(
+    county_fips = case_when(
+      County %in% c('aleutians east ') ~ '02013',
+      TRUE ~ county_fips  # Default value for other cases
+    )
+  )
+
+#Change fips tpo character 
+df$county_fips <- as.character(df$county_fips)
+
+#Fetch counties map
+counties %>%
+  ggplot(aes(long, lat, group = group)) +
+  geom_polygon(fill = "grey", color = "#ffffff", size = 0.05) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45)
+
+```
+
+
+
+## Data Cleaning for Summary Statistics
+```{r data_cleaning_summary_stats,echo=T}
+
+# Splitting data into regions
+West_Region <- subset(df, Region == 'West')
+MidWest_Region <- subset(df, Region == 'MidWest')
+Northeast_Region <- subset(df, Region == 'Northeast')
+South_Region <- subset(df, Region == 'South')
+
+# Calculate average AQI values for the USA and each region
+USA_summary <- df %>% summarize(
+  goodavg = mean(goodpct),
+  modavg = mean(moderatepct),
+  sensavg = mean(Sensitivepct),
+  unhealthyavg = mean(Unhealthypct),
+  veryavg = mean(Very.Unhealthypct),
+  hazardavg = mean(Hazardouspct)
+)
+
+# Reshape USA summary data for plotting
+USA_summary <- pivot_longer(USA_summary, 1:6, names_to = "AQI", values_to = "days_pct")
+USA_summary$AQI <- factor(USA_summary$AQI, levels = c("goodavg", "modavg", "sensavg", "unhealthyavg", "veryavg", "hazardavg"))
+
+# Calculating average AQI values for each region and reshaping data for plotting
+regions_summary <- lapply(list(West_Region, MidWest_Region, Northeast_Region, South_Region), function(region) {
+  region_summary <- region %>% summarize(
+    goodavg = mean(goodpct),
+    modavg = mean(moderatepct),
+    sensavg = mean(Sensitivepct),
+    unhealthyavg = mean(Unhealthypct),
+    veryavg = mean(Very.Unhealthypct),
+    hazardavg = mean(Hazardouspct)
+  )
+  region_summary <- pivot_longer(region_summary, 1:6, names_to = "AQI", values_to = "days_pct")
+  region_summary$AQI <- factor(region_summary$AQI, levels = c("goodavg", "modavg", "sensavg", "unhealthyavg", "veryavg", "hazardavg"))
+  return(region_summary)
+})
+```
+
+## Displaying AQI Statistics for the USA (Pie Chart)
+```{r usa_pie_chart,echo=T}
+pie3D(
+  regions_summary[[1]]$days_pct,
+  radius = 1.5,
+  theta = 0.7,
+  border = "white",
+  shade = 0.5,
+  col = c("forestgreen", "olivedrab3", "gold1", "darkorange", "brown3", "deeppink4"),
+  explode = 0.1,
+  main = "AQI in the USA - % of Days Measured"
+)
+
+# Adding legend above the pie chart
+legend(
+  "top",
+  inset = c(0, 0),
+  legend = regions_summary[[1]]$AQI,
+  fill = c("forestgreen", "olivedrab3", "gold1", "darkorange", "brown3", "deeppink4"),
+  title = "AQI Category",
+  cex = 0.5,
+  horiz = TRUE,
+  xpd = TRUE
+)
+```
+
+This is a pie chart which shows the AQIs across the country as parts of a whole. You can see here that the vast majority of days for any given county in the US are good days, followed by moderate days. Very few days are unhealthy for sensitive groups, unhealthy, very unhealthy, or hazardous.
+
+## Displaying AQI Statistics for the USA (Bar Chart)
+```{r usa_bar_chart,echo=T}
+ggplot(data = USA_summary, aes(x = (AQI), y = days_pct)) +
+  geom_bar(stat = "identity", fill = c("forestgreen", "gold1", "darkorange", "brown2", "deeppink4", "purple4")) +
+  theme_bw() + ylab("Days Measured") + labs(title = "AQI in the US") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_discrete(labels = c("Good", "Moderate", "Unhealthy for \nSensitive Groups", "Unhealthy", "Very Unhealthy", "Hazardous"))
+```
+
+This is a bar chart which shows the AQIs across the country as parts of a whole. You can see here that the vast majority of days for any given county in the US are good days. Very few days are unhealthy for sensitive groups, unhealthy, very unhealthy, or hazardous. Here its a bit easier to see how few days fall into the extreme AQI categories.
+
+## Displaying Average Days at each AQI Level for All US Counties
+```{r all6_aqi_histograms,echo=T}
+
+library(dplyr)
+
+
+# Select the relevant columns
+aqi_metrics <- df %>%
+  select(Good.Days, Moderate.Days, Unhealthy.for.Sensitive.Groups.Days, Unhealthy.Days, Very.Unhealthy.Days, Hazardous.Days)
+
+# Define distinct colors for each AQI metric
+colors <- c("forestgreen", "gold1", "darkorange", "brown2", "deeppink4", "purple4")
+
+# Plot histograms for AQI metrics with different colors and label x-axis as "Number of Days"
+par(mfrow = c(3, 2), mar = c(4, 4, 2, 2))  
+
+# Loop through each AQI metric to create histograms with distinct colors and labeled x-axis
+for (i in 1:6) {
+  col <- colnames(aqi_metrics)[i] 
+  # Remove .
+  col <- gsub("\\.", " ", col)
+  hist(aqi_metrics[[i]], main = col, xlab = "Number of Days", col = colors[i], xlim=c(0,400), border = "black")
+}
+```
+
+Here again, we can see that for most counties, the air quality is good on most days, in the 300-350 range. The number of moderate days is typically about 0-50 in general. The number of days with air quality worse than that is typically very very small for most counties.
+
+## Median AQI by State
+```{r median_aqi_lollipop,echo=T}
+# Calculate median AQI by State
+medians_by_state <- aggregate(Median.AQI ~ State, data = df, FUN = median)
+
+# Convert Median.AQI to numeric type for plotting
+medians_by_state$Median.AQI <- as.numeric(medians_by_state$Median.AQI)
+
+# Plot a lollipop graph using ggplot
+ggplot(medians_by_state, aes(x = Median.AQI, y = reorder(State, Median.AQI))) +
+  geom_segment(aes(x = 0, xend = Median.AQI, y = reorder(State, Median.AQI), yend = reorder(State, Median.AQI)), color = "grey") +
+  geom_point(color = "forestgreen", size = 3) +
+  labs(title = "Median AQI by State", x = "Median AQI", y = "States") +
+  theme_minimal()
+```
+
+Here, we made a lollipop chart of the median AQI for the counties in each state. (This the median value of the median AQI values, so each state has counties with higher and lower median AQIs than are listed here.) Because all of these median AQIs are under 50, they are considered "good" by the Air Quality Index, which is why we colored them all forest green.
+
+## AQI Categories by Region
+```{r aqi_region_boxplot,echo=T}
+
+# Box plots for different AQI metrics by Region
+par(mfrow = c(2, 2))  # Set up a 2x2 grid for the box plots
+
+# Plot 1: Good Days by Region
+plot1 <- ggplot(df, aes(x = Region, y = Good.Days, fill = Region)) +
+  geom_boxplot() +
+  labs(title = "Good Days by Region") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.x = element_text(angle = 0, hjust = 1)
+  ) +
+  scale_fill_brewer(palette = "Set3") +  
+  ylab("Good Days")
+
+# Plot 2: Unhealthy for Sensitive Groups by Region
+plot2 <- ggplot(df, aes(x = Region, y = Unhealthy.for.Sensitive.Groups.Days, fill = Region)) +
+  geom_boxplot() +
+  labs(title = "Unhealthy for Sensitive Groups by Region") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.x = element_text(angle = 0, hjust = 1)
+  ) +
+  scale_fill_brewer(palette = "Set3") +  
+  ylab("Unhealthy for \nSensitive Groups Days")
+
+# Plot 3: Unhealthy Days by Region
+plot3 <- ggplot(df, aes(x = Region, y = Unhealthy.Days, fill = Region)) +
+  geom_boxplot() +
+  labs(title = "Unhealthy Days by Region") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.x = element_text(angle = 0, hjust = 1)
+  ) +
+  scale_fill_brewer(palette = "Set3") +  
+  ylab("Unhealthy Days")
+
+# Plot 4: Hazardous Days by Region
+plot4 <- ggplot(df, aes(x = Region, y = Hazardous.Days, fill = Region)) +
+  geom_boxplot() +
+  labs(title = "Hazardous Days by Region") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.text.x = element_text(angle = 0, hjust = 1)
+  ) +
+  scale_fill_brewer(palette = "Set3") +  
+  ylab("Hazardous Days")
+
+# Combine and arrange the plots into a grid
+grid.arrange(grobs = list(plot1, plot2, plot3, plot4), ncol = 2)
+```
+
+Looking at AQI by state may have been too granular. We also created boxplots for the number of days at various levels of concern across each region of the United States. Here it is clear that in 2022, the West had fewer days of good AQI, and more days of unhealthy and hazardous air quality than other regions of the country.
+
+## Counties of Concern
+```{r,echo=T}
+library(stringr)
+# Filter the data to select the top counties with the highest counts of unhealthy days in various categories
+# Sort the 'df' data frame by the count of unhealthy days, very unhealthy days, and hazardous days
+create_horizontal_bar_plot <- function(data, category) {
+  fill_color <- switch(category,
+                       "Unhealthy.Days" = "brown2",
+                       "Very.Unhealthy.Days" = "deeppink4",
+                       "Hazardous.Days" = "purple4")
+  
+  ggplot(data, aes(y = reorder(County, -get(category)), x = get(category))) +
+    geom_bar(stat = "identity", fill = fill_color) +
+    labs(title = paste("Top Counties by", category), x = category, y = "County") +
+    theme(axis.text.y = element_text(size = 5.8, angle = 0, hjust = 1)) +
+    scale_x_continuous(labels = function(x) gsub("//.", " ", format(x)))
+}
+
+# Create individual horizontal bar plots for each category (Unhealthy, Very Unhealthy, and Hazardous Days)
+plot_unhealthy <- create_horizontal_bar_plot(top_unhealthy, "Unhealthy.Days")
+plot_very_unhealthy <- create_horizontal_bar_plot(top_unhealthy, "Very.Unhealthy.Days")
+plot_hazardous <- create_horizontal_bar_plot(top_unhealthy, "Hazardous.Days")
+
+# Arrange the generated bar plots into a single column layout using grid.arrange or patchwork
+# Display the bar plots one below the other
+grid.arrange(plot_unhealthy, plot_very_unhealthy, plot_hazardous, ncol = 1)
+```
+
+## Mapping Good Days by State
+```{r good_days_map, echo=T}
+#### Mapping Good Days
+state_level_df <- data.frame(
+  State = tolower(state.name),
+  long = state.center$x,
+  lat = state.center$y,
+  stringsAsFactors = FALSE
+) %>%
+  inner_join(df, by = "State")
+
+options(repr.plot.width = 10, repr.plot.height = 6)
+ggplot(state_level_df, aes(long, lat)) +
+  borders("state", fill = "snow2") +
+  geom_point(aes(x = long, y = lat, size = Good.Days, color = goodpct), 
+             show.legend = TRUE) + 
+  geom_text(aes(label = State), vjust = 1.5, size = 2.3) +
+  theme(text = element_text(size = 6)) +
+  scale_size_continuous(
+    range = c(2, 6),
+    name = "Good Days",
+    breaks = c(0, 100, 200, 300, 400, 500 )
+  ) +
+  scale_color_continuous(
+    low = "red",
+    high = "yellowgreen",
+    name = "Good Days Level",
+    labels = scales::percent
+  ) + ggtitle("Good AQI Days by State")+
+  theme_bw()
+```
+
+Here, the size of the dot on each state shows the average number of good days of AQI for each county in each state. But since not every county had AQI measurements for every day, the raw number of Good AQI days could be misleading on its own. Therefore, we added a scale bar with the percent of days of Good AQI to this map so that the colors of the data give a sense of air quality, and the size of dots give a sense of the data quality itself.
+
+## Mapping Unhealthy Days by State
+
+```{r unhealthy_days_map, echo=T}
+##### Mapping Unhealthy Days
+state_level_df <- data.frame(
+  State = tolower(state.name),
+  long = state.center$x,
+  lat = state.center$y,
+  stringsAsFactors = FALSE
+) %>%
+  inner_join(df, by = "State")
+options(repr.plot.width = 10, repr.plot.height = 6)
+ggplot(state_level_df, aes(long, lat)) +
+  borders("state", fill = "snow2") +
+  geom_point(aes(x = long, y = lat, size = Unhealthy.Days, color = Unhealthypct), 
+             show.legend = TRUE) + # Add show.legend = TRUE
+  geom_text(aes(label = State), vjust = 1.5, size = 2.3) +
+  theme(text = element_text(size = 7)) +
+  scale_size_continuous(
+    range = c(2, 6),
+    name = "Unhealthy Days",
+    breaks = c(0, 10, 20, 30, 40, 50)
+  ) +
+  scale_color_continuous(
+    low = "yellowgreen",
+    high = "red",
+    name = "Unhealthy Days Level",
+    labels = scales::percent
+  ) + ggtitle("Unhealthy AQI Days by State")+
+  theme_bw()
+```
+
+Here, the size of the dot on each state shows the average number of unhealthy days of AQI for each county in each state. But since not every county had AQI measurements for every day, the raw number of unhealthy AQI days could be misleading on its own. Therefore, we added a scale bar with the percent of days of unhealthy AQI to this map so that the colors of the data give a sense of air quality, and the size of dots give a sense of the data quality itself. Note that California has a lot of unhealthy AQI days in 2022.
+
+## Mapping Hazardous Days by State
+
+```{r hazardous_days_map, echo=T}
+#### Mapping Hazardous Days by State
+state_level_df <- data.frame(
+  State = tolower(state.name),
+  long = state.center$x,
+  lat = state.center$y,
+  stringsAsFactors = FALSE
+) %>%
+  inner_join(df, by = "State")
+options(repr.plot.width = 10, repr.plot.height = 6)
+ggplot(state_level_df, aes(long, lat)) +
+  borders("state", fill = "snow2") +
+  geom_point(aes(x = long, y = lat, size = Hazardous.Days, color = Hazardouspct)) +
+  geom_text(aes(label = State), vjust = 1.5, size = 2.3) +
+  theme(text = element_text(size = 6)) +
+  scale_size_continuous(
+    range = c(2, 6),
+    #labels = scales::percent,
+    name = "Hazardous Days",
+    breaks = c(0, 3, 6, 9) # Adjust the breaks based on your dataset
+  ) +
+  scale_color_continuous(
+    low = "yellowgreen",
+    high = "red",
+    name = "Hazardous Days Level",
+    labels = scales::percent
+  ) + ggtitle("Hazardous AQI Days by State")+
+  theme_bw()
+```
+
+Here, the size of the dot on each state shows the average number of hazardous days of AQI for each county in each state. But since not every county had AQI measurements for every day, the raw number of hazardous AQI days could be misleading on its own. Therefore, we added a scale bar with the percent of days of hazardous AQI to this map so that the colors of the data give a sense of air quality, and the size of dots give a sense of the data quality itself. Note that Oregon and California have a lot of hazardous AQI days in 2022. Also note that we did not conduct this excercise for every level of AQI since the results would be quite similar for the remaining maps.
+
+## Median AQI by State Map (Chloropleth Map)
+```{r median_aqi_map,echo=T}
+# Obtain state-level map data
+states_map <- get_urbn_map(map = "states", sf = TRUE)
+
+# Rename the 'State' column in the 'df' to match the column name in the map data
+names(df)[which(names(df) == "State")] <- "state_name"
+states_map$state_name <- tolower(states_map$state_name)
+# make Median.AQI numeric
+#df$Median_AQI <- as.numeric(df$Median_AQI)
+
+# Aggregate Median.AQI data to the state level
+state_aqi <- df %>%
+  group_by(state_name) %>%
+  summarise(Median_AQI = median(Median.AQI, na.rm = TRUE))
+
+# Merge state-level map data with Median.AQI data
+state_map_aqi <- left_join(states_map, state_aqi, by = c("state_name" = "state_name"))
+
+# Check for missing values in the Median AQI column
+missing_aqi <- sum(is.na(state_map_aqi$Median_AQI))
+if (missing_aqi > 0) {
+  cat("Warning: There are", missing_aqi, "states with missing Median AQI values.")
+}
+
+# Create a choropleth map depicting Median AQI by State
+ggplot() +
+  geom_sf(data = state_map_aqi, aes(fill = Median_AQI)) +
+  scale_fill_gradient(low = "forestgreen", high = "lightyellow", name = "Median AQI") +
+  labs(title = "Median Air Quality Index (AQI) by State")
+
+
+```
+
+This is a chloropleth map of median AQI by state. (DESCRIBE)
+
+
+## Mapping Good Days by County
+The state level maps were interesting but didn't give a full picture of the data. We wanted to see what air quality looks like at a more granular level, so we produced county level maps as well.
+```{r good_days_countymap, echo=T}
+County_data_good_days <- left_join(df, counties, by = "county_fips") 
+
+final_map <- ggplot() +
+  # Adding the base map with grey color for states and counties not covered
+  geom_map(data = map_data("county"), map = map_data("county"),
+           aes(x = long, y = lat, map_id = region),
+           fill = "lightgrey", color = "grey", size = 0.5) +  # Set fill to NA for a transparent background
+  geom_map(data = map_data("state"), map = map_data("state"),
+           aes(x = long, y = lat, map_id = region),
+           fill = "lightgrey", color = "grey", size = 0.5) +  # Set fill to NA for a transparent background
+  # Your second code snippet for the filled counties with the correct variable name
+  geom_polygon(data = County_data_good_days, 
+               aes(x = long, y = lat, group = group, fill = goodpct),
+               color = "#ffffff", size = 0.05) +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45, xlim = c(-120, -70), ylim = c(24, 50)) +
+  # Set the color scale with low to high gradient
+  scale_fill_gradient(name = "Good Days", 
+                      low = "darkolivegreen2", high = "olivedrab", 
+                      labels = scales::percent_format(),
+                      guide = guide_colorbar(reverse = FALSE)) +
+  # Remove axis labels and titles
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+
+final_map
+```
+
+say something about it.
+
+## Displaying Carbon Monoxide and Nitrogen Dioxide Exposure by US Region (Violin Plot)
+```{r CO_NO2_violin_plot,echo=T}
+df$Region <- factor(df$Region)
+theme_set(theme_minimal(base_size = 14) + theme(legend.position = "right"))
+
+#CO
+p1 <- ggplot(df, aes(x = Region, y = Days.CO, fill = Region)) +
+  geom_violin(trim =F, alpha = 0.7, color = "white", size = 1.5) +
+  labs(title = "Carbon Monoxide Days and", x = "Region", y = "Carbon Monoxide Days") +
+  scale_fill_manual(values = c("MidWest" = "#4e79a7", "Northeast" = "#59a14f", "South" = "#f28e2c", "West" = "#e15759")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, color = "black"),
+    axis.text.y = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    panel.grid.major = element_line(color = "gray", size = 0.2),
+    panel.grid.minor = element_blank(),
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(1.5, "lines"),
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 14),
+    legend.position = "right"
+  ) + ylim(0,366)+
+  geom_jitter(shape = 16, position = position_jitter(0.2), color = "black", alpha = 0.5,size=.5) +
+  theme(legend.position = "right")
+
+
+p2 <- ggplot(df, aes(x = Region, y = Days.NO2, fill = Region)) +
+  geom_violin(trim =F, alpha = 0.7, color = "white", size = 1.5) +
+  labs(title = "Nitrogen Dioxide Days by Region", x = "Region", y = "Nitrogen Dioxide Days") +
+  scale_fill_manual(values = c("MidWest" = "#4e79a7", "Northeast" = "#59a14f", "South" = "#f28e2c", "West" = "#e15759")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, color = "black"),
+    axis.text.y = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    panel.grid.major = element_line(color = "gray", size = 0.2),
+    panel.grid.minor = element_blank(),
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(1.5, "lines"),
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 14),
+    legend.position = "right"
+  ) + ylim(0,366)+
+  geom_jitter(shape = 16, position = position_jitter(0.2), color = "black", alpha = 0.5,size=.5) +
+  theme(legend.position = "right")
+
+p <- p1+p2
+# Print the plot
+print(p)
+```
+
+say something about it.
+
+## Displaying Ozone Exposure by US Region (Violin Plot)
+```{r ozone_plot,echo=T}
+theme_set(theme_minimal(base_size = 14) + theme(legend.position = "right"))
+
+p <- ggplot(df, aes(x = Region, y = Days.Ozone, fill = Region)) +
+  geom_violin(trim =F, alpha = 0.7, color = "white", size = 1.5) +
+  labs(title = "Ozone Days by Region", x = "Region", y = "Ozone Days") +
+  scale_fill_manual(values = c("MidWest" = "#4e79a7", "Northeast" = "#59a14f", "South" = "#f28e2c", "West" = "#e15759")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, color = "black"),
+    axis.text.y = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    panel.grid.major = element_line(color = "gray", size = 0.2),
+    panel.grid.minor = element_blank(),
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(1.5, "lines"),
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 14),
+    legend.position = "right"
+  ) +ylim(0,366)+
+  geom_jitter(shape = 16, position = position_jitter(0.2), color = "black", alpha = 0.5,size=.5) +
+  theme(legend.position = "right")
+
+# Print the plot
+print(p)
+```
+
+say something about it.
+
+## Displaying Small Particulate Matter Exposure by US Region (Violin Plot)
+```{r particulate_plot,echo=T}
+theme_set(theme_minimal(base_size = 14) + theme(legend.position = "right"))
+
+p <- ggplot(df, aes(x = Region, y = Days.PM2.5, fill = Region)) +
+  geom_violin(trim =F, alpha = 0.7, color = "white", size = 1.5) +
+  labs(title = "Small Particulate Matter by Region", x = "Region", y = "PM 2.5 Days") +
+  scale_fill_manual(values = c("MidWest" = "#4e79a7", "Northeast" = "#59a14f", "South" = "#f28e2c", "West" = "#e15759")) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 1, color = "black"),
+    axis.text.y = element_text(color = "black"),
+    axis.line = element_line(color = "black"),
+    panel.grid.major = element_line(color = "gray", size = 0.2),
+    panel.grid.minor = element_blank(),
+    legend.title = element_text(face = "bold", size = 12),
+    legend.text = element_text(size = 12),
+    legend.key.size = unit(1.5, "lines"),
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold"),
+    strip.text = element_text(size = 14),
+    legend.position = "right"
+  ) + ylim(0,366)+
+  geom_jitter(shape = 16, position = position_jitter(0.2), color = "black", alpha = 0.5,size=.5) +
+  theme(legend.position = "right")
+
+# Print the plot
+print(p)
+```
+
+say something about it.
+
+## Correlations Between Pollutants and AQI
+```{r correlation_heatmap,echo=T}
+
+# Subset the relevant columns
+pollutants <- df[c("Median.AQI", "Days.CO", "Days.NO2", "Days.Ozone", "Days.PM2.5", "Days.PM10")]
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(pollutants)
+
+# Melt the correlation matrix for plotting
+melted_corr <- melt(correlation_matrix)
+
+# Plot heatmap
+ggplot(melted_corr, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red", name = "Correlation") +
+  labs(title = "Correlation Heatmap between Median.AQI and Pollutants",
+       x = "Variables", y = "Variables") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+We said previously that the total AQI value for a geographic area is made up of the AQI for that area by each pollutant. The highest pollutant "sub-AQI" will become the AQI for the area (in this case the county). Here we ask: which pollutants are the most correlated to AQI? Or in other words, what is the typical driving factor for high AQI values and unhealthy air? Days with unhealthy levels of ozone and days with unhealthy levels of small particulate matter were negatively correlated, meaning that counties with a lot of zone exposure typically did not have a lot of particulate matter exposure and vice versa. Most of these variables were not highly correlated with one another, except for ozone and AQI, meaning that most of the high AQI values for counties in 2022 are likely the result of unhealthy levels of ozone exposure.
